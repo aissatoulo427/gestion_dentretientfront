@@ -1,0 +1,174 @@
+<div class="mx-auto max-w-4xl">
+  <a routerLink="/entretiens" class="inline-flex items-center gap-1 text-sm font-medium text-navy-400 transition hover:text-navy-700">
+    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M15 6l-6 6 6 6"/></svg>
+    Retour aux entretiens
+  </a>
+
+  @if (loading()) {
+    <div class="card mt-4"><app-spinner /></div>
+  } @else if (entretien(); as e) {
+    <div class="mt-4 flex items-start justify-between gap-4">
+      <div>
+        <h1 class="page-title">Entretien #{{ e.id }}</h1>
+        <p class="page-subtitle">{{ formatDateTime(e.dateHeure) }} · {{ modaliteLabel[e.modalite] }}</p>
+      </div>
+      <app-status-badge [value]="e.statut" />
+    </div>
+
+    <!-- Infos + actions -->
+    <div class="mt-6 grid gap-6 md:grid-cols-3">
+      <div class="card card-pad md:col-span-2">
+        <h2 class="section-title">Détails</h2>
+        <dl class="mt-4 grid grid-cols-2 gap-4">
+          <div>
+            <dt class="kicker">Lieu / Lien</dt>
+            <dd class="mt-1 text-sm font-medium text-navy-900">{{ e.lieuOuLien }}</dd>
+          </div>
+          <div>
+            <dt class="kicker">Poste (demande)</dt>
+            <dd class="mt-1 text-sm font-medium text-navy-900">{{ directory.demandeLabel(e.demandeEntretienId) }}</dd>
+          </div>
+          <div>
+            <dt class="kicker">Candidat</dt>
+            <dd class="mt-1 text-sm font-medium text-navy-900">{{ directory.candidatLabel(e.candidatId) }}</dd>
+            @if (directory.candidat(e.candidatId); as c) {
+              <dd class="text-xs text-navy-400">{{ c.email }}</dd>
+            }
+          </div>
+          <div>
+            <dt class="kicker">Recruteur</dt>
+            <dd class="mt-1 text-sm font-medium text-navy-900">{{ directory.recruteurLabel(e.recruteurId) }}</dd>
+            @if (directory.recruteur(e.recruteurId); as r) {
+              <dd class="text-xs text-navy-400">{{ r.email }}</dd>
+            }
+          </div>
+        </dl>
+      </div>
+
+      <div class="card card-pad">
+        <h2 class="section-title">Actions</h2>
+        @if (canAct()) {
+          <div class="mt-4 flex flex-col gap-2">
+            @if (e.statut !== 'Confirme') {
+              <button type="button" (click)="confirmer()" [disabled]="busy()" class="btn-success w-full">Confirmer</button>
+            }
+            <button type="button" (click)="openReprog()" class="btn-ghost w-full">Reprogrammer</button>
+            <button type="button" (click)="rappel()" [disabled]="busy()" class="btn-ghost w-full">Envoyer un rappel</button>
+          </div>
+        } @else {
+          <p class="mt-4 text-sm text-navy-400">Aucune action disponible pour ce statut.</p>
+        }
+      </div>
+    </div>
+
+    <!-- Feedbacks -->
+    <div class="mt-8 flex items-center justify-between">
+      <h2 class="text-lg font-semibold text-navy-950">Feedbacks</h2>
+      <button type="button" (click)="openFeedback()" class="btn-primary btn-sm">
+        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>
+        Saisir un feedback
+      </button>
+    </div>
+
+    <div class="mt-3 space-y-3">
+      @if (feedbackList().length === 0) {
+        <div class="card"><app-empty-state title="Aucun feedback" hint="Ajoutez le premier retour d'entretien." /></div>
+      } @else {
+        @for (f of feedbackList(); track f.id) {
+          <div class="card card-pad">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <span class="flex items-center gap-1 text-sm font-bold text-navy-950">
+                  <svg class="h-4 w-4 text-amber-400" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3 6.3 6.9.9-5 4.8 1.2 6.8L12 17.8 5.9 20.8 7.1 14l-5-4.8 6.9-.9L12 2Z"/></svg>
+                  {{ f.note }}/5
+                </span>
+                <app-status-badge [value]="f.decision" />
+              </div>
+              <span class="text-xs text-navy-400">{{ directory.auteurLabel(f.auteurId) }} · {{ formatDateTime(f.dateSaisie) }}</span>
+            </div>
+            <p class="mt-3 text-sm text-navy-700">{{ f.commentaire }}</p>
+          </div>
+        }
+      }
+    </div>
+  } @else {
+    <div class="card mt-4"><app-empty-state title="Entretien introuvable" /></div>
+  }
+</div>
+
+<!-- Modale reprogrammer -->
+@if (reprogOpen()) {
+  <app-modal title="Reprogrammer l'entretien" (close)="reprogOpen.set(false)">
+    <form [formGroup]="reprogForm" (ngSubmit)="submitReprog()" class="space-y-4">
+      <div>
+        <label class="label">Nouveau créneau</label>
+        <select formControlName="nouveauCreneauId" class="select">
+          <option [ngValue]="null" disabled>— Sélectionner —</option>
+          @for (c of creneauxDispo(); track c.id) {
+            <option [ngValue]="c.id">#{{ c.id }} · {{ formatDateTime(c.dateDebut) }}</option>
+          }
+        </select>
+        @if (reprogForm.controls.nouveauCreneauId.touched && reprogForm.controls.nouveauCreneauId.invalid) {
+          <p class="field-error">Créneau requis.</p>
+        }
+      </div>
+      <div>
+        <label class="label">Nouvelle date et heure</label>
+        <input type="datetime-local" formControlName="nouvelleDateHeure" class="input" />
+        @if (reprogForm.controls.nouvelleDateHeure.touched && reprogForm.controls.nouvelleDateHeure.invalid) {
+          <p class="field-error">Date requise.</p>
+        }
+      </div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button type="button" (click)="reprogOpen.set(false)" class="btn-ghost">Annuler</button>
+        <button type="submit" [disabled]="busy()" class="btn-primary">{{ busy() ? 'En cours…' : 'Reprogrammer' }}</button>
+      </div>
+    </form>
+  </app-modal>
+}
+
+<!-- Modale feedback -->
+@if (feedbackOpen()) {
+  <app-modal title="Saisir un feedback" (close)="feedbackOpen.set(false)">
+    <form [formGroup]="feedbackForm" (ngSubmit)="submitFeedback()" class="space-y-4">
+      <div>
+        <label class="label">Auteur (recruteur ou manager)</label>
+        <select formControlName="auteurId" class="select">
+          <option [ngValue]="null" disabled>— Sélectionner —</option>
+          @for (a of auteurs(); track a.role + a.id) {
+            <option [ngValue]="a.id">{{ a.nom }} — {{ a.role }}</option>
+          }
+        </select>
+        @if (feedbackForm.controls.auteurId.touched && feedbackForm.controls.auteurId.invalid) {
+          <p class="field-error">Auteur requis.</p>
+        }
+      </div>
+      <div>
+        <label class="label">Note (0 à 5)</label>
+        <input type="number" min="0" max="5" formControlName="note" class="input" />
+        @if (feedbackForm.controls.note.touched && feedbackForm.controls.note.invalid) {
+          <p class="field-error">La note doit être comprise entre 0 et 5.</p>
+        }
+      </div>
+      <div>
+        <label class="label">Décision</label>
+        <select formControlName="decision" class="select">
+          @for (d of decisionValues; track d) {
+            <option [ngValue]="d">{{ decisionLabel[d] }}</option>
+          }
+        </select>
+      </div>
+      <div>
+        <label class="label">Commentaire</label>
+        <textarea formControlName="commentaire" rows="3" class="textarea"></textarea>
+        @if (feedbackForm.controls.commentaire.touched && feedbackForm.controls.commentaire.invalid) {
+          <p class="field-error">Commentaire requis.</p>
+        }
+      </div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button type="button" (click)="feedbackOpen.set(false)" class="btn-ghost">Annuler</button>
+        <button type="submit" [disabled]="busy()" class="btn-primary">{{ busy() ? 'Enregistrement…' : 'Enregistrer' }}</button>
+      </div>
+    </form>
+  </app-modal>
+}

@@ -1,0 +1,104 @@
+<div class="mx-auto max-w-5xl">
+  <header class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <h1 class="page-title">Demandes d'entretien</h1>
+      <p class="page-subtitle">Créez et suivez les demandes de recrutement.</p>
+    </div>
+    <button type="button" (click)="openModal()" class="btn-primary">
+      <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>
+      Nouvelle demande
+    </button>
+  </header>
+
+  <div class="card mt-6 overflow-hidden">
+    @if (loading()) {
+      <app-spinner />
+    } @else if (items().length === 0) {
+      <app-empty-state title="Aucune demande" hint="Créez une demande pour commencer le processus." />
+    } @else {
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Poste</th>
+            <th>Type</th>
+            <th>Créée le</th>
+            <th>Statut</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (d of items(); track d.id) {
+            <tr>
+              <td>
+                <a [routerLink]="['/demandes', d.id]" class="font-semibold text-navy-900 hover:text-accent-500">{{ d.poste }}</a>
+                <p class="text-xs text-navy-400">#{{ d.id }}</p>
+              </td>
+              <td>{{ d.typeEntretien }}</td>
+              <td>{{ formatDate(d.dateCreation) }}</td>
+              <td><app-status-badge [value]="d.statut" /></td>
+              <td class="text-right">
+                <a [routerLink]="['/demandes', d.id]" class="text-xs font-semibold text-accent-500 hover:text-accent-600">Ouvrir →</a>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+  </div>
+</div>
+
+@if (modalOpen()) {
+  <app-modal title="Nouvelle demande" (close)="closeModal()">
+    <form [formGroup]="form" (ngSubmit)="submit()" class="space-y-4">
+      <div>
+        <label class="label">Recruteur</label>
+        <select formControlName="recruteurId" class="select">
+          <option [ngValue]="null" disabled>— Sélectionner —</option>
+          @for (r of recruteurs(); track r.id) {
+            <option [ngValue]="r.id">{{ r.nom }} ({{ r.email }})</option>
+          }
+        </select>
+        @if (form.controls.recruteurId.touched && form.controls.recruteurId.invalid) {
+          <p class="field-error">Recruteur requis.</p>
+        }
+      </div>
+
+      <div>
+        <label class="label">Candidat</label>
+        <select formControlName="candidatId" class="select">
+          <option [ngValue]="null" disabled>— Sélectionner —</option>
+          @for (c of candidats(); track c.id) {
+            <option [ngValue]="c.id">{{ c.prenom }} {{ c.nom }}</option>
+          }
+        </select>
+        @if (form.controls.candidatId.touched && form.controls.candidatId.invalid) {
+          <p class="field-error">Candidat requis.</p>
+        }
+      </div>
+
+      <div>
+        <label class="label">Poste</label>
+        <input formControlName="poste" class="input" placeholder="ex. Développeur .NET" />
+        @if (form.controls.poste.touched && form.controls.poste.invalid) {
+          <p class="field-error">Poste requis.</p>
+        }
+      </div>
+
+      <div>
+        <label class="label">Type d'entretien</label>
+        <select formControlName="typeEntretien" class="select">
+          @for (t of typeValues; track t) {
+            <option [ngValue]="t">{{ t }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2">
+        <button type="button" (click)="closeModal()" class="btn-ghost">Annuler</button>
+        <button type="submit" [disabled]="saving()" class="btn-primary">
+          {{ saving() ? 'Création…' : 'Créer la demande' }}
+        </button>
+      </div>
+    </form>
+  </app-modal>
+}

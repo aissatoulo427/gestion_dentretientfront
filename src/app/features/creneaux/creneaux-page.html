@@ -1,0 +1,90 @@
+<div class="mx-auto max-w-5xl">
+  <header class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <h1 class="page-title">Créneaux</h1>
+      <p class="page-subtitle">Disponibilités proposées par les recruteurs.</p>
+    </div>
+    <button type="button" (click)="openModal()" class="btn-primary">
+      <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>
+      Nouveau créneau
+    </button>
+  </header>
+
+  <div class="card mt-6 overflow-hidden">
+    @if (loading()) {
+      <app-spinner />
+    } @else if (items().length === 0) {
+      <app-empty-state title="Aucun créneau" hint="Créez une disponibilité pour un recruteur." />
+    } @else {
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Début</th>
+            <th>Fin</th>
+            <th>Recruteur</th>
+            <th>Disponible</th>
+            <th>Demande</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (c of items(); track c.id) {
+            <tr>
+              <td class="font-medium text-navy-900">{{ formatDateTime(c.dateDebut) }}</td>
+              <td>{{ formatDateTime(c.dateFin) }}</td>
+              <td class="font-medium text-navy-900">{{ directory.recruteurLabel(c.recruteurId) }}</td>
+              <td>
+                @if (c.disponible) {
+                  <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-600/20">
+                    <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span> Libre
+                  </span>
+                } @else {
+                  <span class="inline-flex items-center gap-1.5 rounded-full bg-navy-100 px-2.5 py-1 text-xs font-medium text-navy-500 ring-1 ring-inset ring-navy-500/20">
+                    <span class="h-1.5 w-1.5 rounded-full bg-navy-400"></span> Réservé
+                  </span>
+                }
+              </td>
+              <td>{{ c.demandeEntretienId ? directory.demandeLabel(c.demandeEntretienId) : '—' }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+  </div>
+</div>
+
+@if (modalOpen()) {
+  <app-modal title="Nouveau créneau" (close)="closeModal()">
+    <form [formGroup]="form" (ngSubmit)="submit()" class="space-y-4">
+      <div>
+        <label class="label">Recruteur</label>
+        <select formControlName="recruteurId" class="select">
+          <option [ngValue]="null" disabled>— Sélectionner —</option>
+          @for (r of recruteurs(); track r.id) {
+            <option [ngValue]="r.id">{{ r.nom }} ({{ r.email }})</option>
+          }
+        </select>
+        @if (form.controls.recruteurId.touched && form.controls.recruteurId.invalid) {
+          <p class="field-error">Recruteur requis.</p>
+        }
+      </div>
+      <div>
+        <label class="label">Début</label>
+        <input type="datetime-local" formControlName="dateDebut" class="input" />
+        @if (form.controls.dateDebut.touched && form.controls.dateDebut.invalid) {
+          <p class="field-error">Date de début requise.</p>
+        }
+      </div>
+      <div>
+        <label class="label">Fin</label>
+        <input type="datetime-local" formControlName="dateFin" class="input" />
+        @if (form.controls.dateFin.touched && form.controls.dateFin.invalid) {
+          <p class="field-error">Date de fin requise.</p>
+        }
+      </div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button type="button" (click)="closeModal()" class="btn-ghost">Annuler</button>
+        <button type="submit" [disabled]="saving()" class="btn-primary">{{ saving() ? 'Création…' : 'Créer' }}</button>
+      </div>
+    </form>
+  </app-modal>
+}

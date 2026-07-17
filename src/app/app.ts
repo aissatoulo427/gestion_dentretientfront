@@ -1,12 +1,11 @@
-import { Component, signal } from '@angular/core';
+import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { ToastHost } from './shared/ui/toast-host';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet],
-  templateUrl: './app.html',
-  styleUrl: './app.css'
+  imports: [RouterOutlet, ToastHost],
+  template: `<router-outlet />
+    <app-toast-host />`,
 })
-export class App {
-  protected readonly title = signal('gestiondentretienFront');
-}
+export class App {}

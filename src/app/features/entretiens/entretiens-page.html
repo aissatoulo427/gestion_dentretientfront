@@ -1,0 +1,39 @@
+<div class="mx-auto max-w-5xl">
+  <header>
+    <h1 class="page-title">Entretiens</h1>
+    <p class="page-subtitle">Tous les entretiens planifiés. La planification se fait depuis une demande.</p>
+  </header>
+
+  <div class="card mt-6 overflow-hidden">
+    @if (loading()) {
+      <app-spinner />
+    } @else if (items().length === 0) {
+      <app-empty-state title="Aucun entretien" hint="Planifiez un entretien depuis une demande." />
+    } @else {
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Poste</th>
+            <th>Candidat</th>
+            <th>Modalité</th>
+            <th>Statut</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (e of items(); track e.id) {
+            <tr>
+              <td>
+                <a [routerLink]="['/entretiens', e.id]" class="font-semibold text-navy-900 hover:text-accent-500">{{ formatDateTime(e.dateHeure) }}</a>
+              </td>
+              <td>{{ directory.demandeLabel(e.demandeEntretienId) }}</td>
+              <td class="font-medium text-navy-900">{{ directory.candidatLabel(e.candidatId) }}</td>
+              <td>{{ modaliteLabel[e.modalite] }}</td>
+              <td><app-status-badge [value]="e.statut" /></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+  </div>
+</div>
