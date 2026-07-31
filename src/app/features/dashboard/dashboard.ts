@@ -3,7 +3,7 @@ import { RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { AuthService } from '../../core/auth/auth.service';
 import { DirectoryService } from '../../core/directory.service';
-import { Entretien } from '../../core/models';
+import { Entretien, RoleEmploye, ROLE_LABEL, ROLES_EMPLOYES } from '../../core/models';
 import { EntretienService } from '../../core/services/entretien.service';
 import { PersonneService } from '../../core/services/personne.service';
 import { formatDateTime, MODALITE_LABEL } from '../../shared/format';
@@ -22,12 +22,21 @@ export class Dashboard {
   private readonly auth = inject(AuthService);
   readonly directory = inject(DirectoryService);
 
-  readonly isRecruteur = computed(() => this.auth.role() === 'Recruteur');
+  readonly isRh = computed(() => this.auth.role() === 'RH');
+  readonly isAdmin = computed(() => this.auth.role() === 'Admin');
+
+  readonly roleLabel = ROLE_LABEL;
+  readonly rolesEmployes = ROLES_EMPLOYES;
 
   readonly loading = signal(true);
   readonly nbCandidats = signal(0);
-  readonly nbRecruteurs = signal(0);
-  readonly nbManagers = signal(0);
+  readonly nbEmployes = signal(0);
+  /** Comptes par rôle — le seul chiffre qui parle à l'administrateur. */
+  readonly nbParRole = signal<Record<RoleEmploye, number>>({
+    RH: 0,
+    EvaluateurTechnique: 0,
+    Manager: 0,
+  });
   readonly allEntretiens = signal<Entretien[]>([]);
 
   readonly formatDateTime = formatDateTime;
@@ -67,8 +76,24 @@ export class Dashboard {
   private load(): void {
     this.loading.set(true);
 
-    // Le manager ne pilote pas les personnes : on ne charge que les entretiens à valider.
-    if (!this.isRecruteur()) {
+    // L'admin ne recrute pas : ni entretiens ni candidats, seulement les comptes.
+    if (this.isAdmin()) {
+      forkJoin(ROLES_EMPLOYES.map((role) => this.personnes.getEmployes(role))).subscribe({
+        next: (listes) => {
+          this.nbParRole.set({
+            RH: listes[0].length,
+            EvaluateurTechnique: listes[1].length,
+            Manager: listes[2].length,
+          });
+          this.loading.set(false);
+        },
+        error: () => this.loading.set(false),
+      });
+      return;
+    }
+
+    // Seul le RH pilote les personnes : les autres ne voient que leurs entretiens.
+    if (!this.isRh()) {
       this.entretiens.getAll().subscribe({
         next: (entretiens) => {
           this.allEntretiens.set(entretiens);
@@ -81,14 +106,14 @@ export class Dashboard {
 
     forkJoin({
       candidats: this.personnes.getCandidats(),
-      recruteurs: this.personnes.getRecruteurs(),
+      rh: this.personnes.getRh(),
+      evaluateursTechniques: this.personnes.getEvaluateursTechniques(),
       managers: this.personnes.getManagers(),
       entretiens: this.entretiens.getAll(),
     }).subscribe({
-      next: ({ candidats, recruteurs, managers, entretiens }) => {
+      next: ({ candidats, rh, evaluateursTechniques, managers, entretiens }) => {
         this.nbCandidats.set(candidats.length);
-        this.nbRecruteurs.set(recruteurs.length);
-        this.nbManagers.set(managers.length);
+        this.nbEmployes.set(rh.length + evaluateursTechniques.length + managers.length);
         this.allEntretiens.set(entretiens);
         this.loading.set(false);
       },

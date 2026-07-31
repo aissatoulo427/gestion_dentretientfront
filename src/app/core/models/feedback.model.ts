@@ -10,9 +10,9 @@ export interface Feedback {
   auteurId: number;
 }
 
+/** Le compte-rendu est signé par l'utilisateur connecté, lu dans le token par l'API. */
 export interface CreateFeedback {
   entretienId: number;
-  auteurId: number;
   note: number;
   commentaire: string;
   decision: Decision;

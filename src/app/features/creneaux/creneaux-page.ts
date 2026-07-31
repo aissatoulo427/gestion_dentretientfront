@@ -1,10 +1,9 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { DirectoryService } from '../../core/directory.service';
-import { Creneau, RecruteurManager } from '../../core/models';
+import { Creneau } from '../../core/models';
 import { NotificationService } from '../../core/notification.service';
 import { CreneauService } from '../../core/services/creneau.service';
-import { PersonneService } from '../../core/services/personne.service';
 import { formatDateTime, toApiDateTime } from '../../shared/format';
 import { EmptyState } from '../../shared/ui/empty-state';
 import { Modal } from '../../shared/ui/modal';
@@ -17,7 +16,6 @@ import { Spinner } from '../../shared/ui/spinner';
 })
 export class CreneauxPage {
   private readonly creneaux = inject(CreneauService);
-  private readonly personnes = inject(PersonneService);
   private readonly notify = inject(NotificationService);
   readonly directory = inject(DirectoryService);
   private readonly fb = inject(FormBuilder);
@@ -25,19 +23,16 @@ export class CreneauxPage {
   readonly formatDateTime = formatDateTime;
   readonly loading = signal(true);
   readonly items = signal<Creneau[]>([]);
-  readonly recruteurs = signal<RecruteurManager[]>([]);
   readonly modalOpen = signal(false);
   readonly saving = signal(false);
 
   readonly form = this.fb.nonNullable.group({
-    recruteurId: [null as number | null, Validators.required],
     dateDebut: ['', Validators.required],
     dateFin: ['', Validators.required],
   });
 
   constructor() {
     this.reload();
-    this.personnes.getRecruteurs().subscribe((r) => this.recruteurs.set(r));
   }
 
   reload(): void {
@@ -52,7 +47,7 @@ export class CreneauxPage {
   }
 
   openModal(): void {
-    this.form.reset({ recruteurId: null, dateDebut: '', dateFin: '' });
+    this.form.reset({ dateDebut: '', dateFin: '' });
     this.modalOpen.set(true);
   }
 
@@ -69,7 +64,6 @@ export class CreneauxPage {
     this.saving.set(true);
     this.creneaux
       .create({
-        recruteurId: v.recruteurId!,
         dateDebut: toApiDateTime(v.dateDebut),
         dateFin: toApiDateTime(v.dateFin),
       })

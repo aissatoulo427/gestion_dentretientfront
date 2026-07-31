@@ -1,18 +1,22 @@
-import { StatutDemande, TypeEntretien } from './enums';
+import { StatutDemande } from './enums';
 
 export interface Demande {
   id: number;
   poste: string;
-  typeEntretien: TypeEntretien;
   dateCreation: string;
   statut: StatutDemande;
-  recruteurId: number;
+  /** Le RH organisateur. S'appelait `recruteurId`. */
+  rhId: number;
   candidatId: number;
 }
 
+/** L'organisateur est le recruteur connecté, lu dans le token par l'API. */
 export interface CreateDemande {
-  recruteurId: number;
   candidatId: number;
   poste: string;
-  typeEntretien: TypeEntretien;
+}
+
+/** Seul le poste est corrigeable : changer de candidat invaliderait les tours déjà planifiés. */
+export interface UpdateDemande {
+  poste: string;
 }

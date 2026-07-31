@@ -27,12 +27,12 @@ describe('DemandeService', () => {
   afterEach(() => httpMock.verify());
 
   it('crée une demande via POST /demandes', () => {
-    const payload = { recruteurId: 1, candidatId: 2, poste: 'Dev', typeEntretien: 'RH' as const };
+    const payload = { candidatId: 2, poste: 'Dev' };
     service.create(payload).subscribe();
     const req = httpMock.expectOne(`${base}/demandes`);
     expect(req.request.method).toBe('POST');
     expect(req.request.body).toEqual(payload);
-    req.flush({ id: 1, ...payload, dateCreation: '', statut: 'Creee' });
+    req.flush({ id: 1, ...payload, rhId: 1, dateCreation: '', statut: 'Creee' });
   });
 
   it('récupère les créneaux disponibles', () => {

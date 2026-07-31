@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { API_BASE_URL } from '../api.config';
-import { CreateDemande, Creneau, Demande } from '../models';
+import { ApiMessage, CreateDemande, Creneau, Demande, UpdateDemande } from '../models';
 
 @Injectable({ providedIn: 'root' })
 export class DemandeService {
@@ -25,7 +25,12 @@ export class DemandeService {
     return this.http.get<Creneau[]>(`${this.base}/${id}/creneaux-disponibles`);
   }
 
-  annuler(id: number): Observable<void> {
-    return this.http.post<void>(`${this.base}/${id}/annuler`, {});
+  /** Corrige le poste. Le candidat n'est pas modifiable côté API. */
+  updatePoste(id: number, payload: UpdateDemande): Observable<Demande> {
+    return this.http.put<Demande>(`${this.base}/${id}`, payload);
+  }
+
+  annuler(id: number): Observable<ApiMessage> {
+    return this.http.post<ApiMessage>(`${this.base}/${id}/annuler`, {});
   }
 }

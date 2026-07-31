@@ -34,7 +34,20 @@ export function extractErrorMessage(error: HttpErrorResponse): string {
   }
 }
 
-const isLoginRequest = (url: string) => url.includes('/auth/login');
+/**
+ * Endpoints appelés sans session : login, inscription, réinitialisation.
+ * Un 401 y est une réponse métier, pas une session expirée — il ne doit
+ * donc jamais déconnecter ni rediriger le visiteur.
+ */
+const PUBLIC_ENDPOINTS = [
+  '/auth/login',
+  '/auth/mot-de-passe-oublie',
+  '/auth/reinitialiser',
+  '/auth/activer',
+];
+
+const isEndpointPublic = (url: string) =>
+  PUBLIC_ENDPOINTS.some((endpoint) => url.includes(endpoint));
 
 /** Interceptor fonctionnel : affiche un toast d'erreur, gère le 401 (session expirée). */
 export const httpErrorInterceptor: HttpInterceptorFn = (req, next) => {
@@ -44,18 +57,15 @@ export const httpErrorInterceptor: HttpInterceptorFn = (req, next) => {
 
   return next(req).pipe(
     catchError((error: HttpErrorResponse) => {
-      // 401 hors login = session invalide/expirée -> déconnexion + redirection.
-      if (error.status === 401 && !isLoginRequest(req.url)) {
+      // 401 sur un endpoint protégé = session invalide/expirée -> déconnexion + redirection.
+      if (error.status === 401 && !isEndpointPublic(req.url)) {
         auth.logout();
         notifications.error('Session expirée, veuillez vous reconnecter.');
         router.navigate(['/login']);
         return throwError(() => new Error('Session expirée.'));
       }
 
-      const message =
-        error.status === 401 && isLoginRequest(req.url)
-          ? 'Email ou mot de passe incorrect.'
-          : extractErrorMessage(error);
+      const message = extractErrorMessage(error);
       notifications.error(message);
       return throwError(() => new Error(message));
     }),

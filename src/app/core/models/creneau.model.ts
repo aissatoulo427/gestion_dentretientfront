@@ -3,12 +3,13 @@ export interface Creneau {
   dateDebut: string;
   dateFin: string;
   disponible: boolean;
-  recruteurId: number;
+  /** Le propriétaire du créneau, quel que soit son rôle. S'appelait `recruteurId`. */
+  employeId: number;
   demandeEntretienId: number | null;
 }
 
+/** Le créneau appartient au recruteur connecté, lu dans le token par l'API. */
 export interface CreateCreneau {
-  recruteurId: number;
   dateDebut: string;
   dateFin: string;
 }

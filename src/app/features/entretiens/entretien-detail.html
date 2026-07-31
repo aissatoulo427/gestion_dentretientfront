@@ -36,11 +36,26 @@
             }
           </div>
           <div>
-            <dt class="kicker">Recruteur</dt>
-            <dd class="mt-1 text-sm font-medium text-navy-900">{{ directory.recruteurLabel(e.recruteurId) }}</dd>
-            @if (directory.recruteur(e.recruteurId); as r) {
-              <dd class="text-xs text-navy-400">{{ r.email }}</dd>
+            <dt class="kicker">Type de tour</dt>
+            <dd class="mt-1 text-sm font-medium text-navy-900">{{ e.typeEntretien }}</dd>
+          </div>
+          <div>
+            <dt class="kicker">Organisateur</dt>
+            @if (demande(); as dem) {
+              <dd class="mt-1 text-sm font-medium text-navy-900">{{ directory.rhLabel(dem.rhId) }}</dd>
+            } @else {
+              <dd class="mt-1 text-sm text-navy-300">—</dd>
             }
+          </div>
+          <div class="col-span-2">
+            <dt class="kicker">Panel d'évaluateurs</dt>
+            <dd class="mt-1 flex flex-wrap gap-2">
+              @for (id of e.evaluateurIds; track id) {
+                <span class="rounded-full bg-navy-50 px-2.5 py-1 text-xs font-medium text-navy-700">
+                  {{ directory.employeLabel(id) }}
+                </span>
+              }
+            </dd>
           </div>
         </dl>
       </div>
@@ -56,18 +71,22 @@
             <button type="button" (click)="rappel()" [disabled]="busy()" class="btn-ghost w-full">Envoyer un rappel</button>
           </div>
         } @else {
-          <p class="mt-4 text-sm text-navy-400">Aucune action disponible pour ce statut.</p>
+          <p class="mt-4 text-sm text-navy-400">{{ raisonActionsIndisponibles() }}</p>
         }
       </div>
     </div>
 
     <!-- Feedbacks -->
-    <div class="mt-8 flex items-center justify-between">
-      <h2 class="text-lg font-semibold text-navy-950">Feedbacks</h2>
-      <button type="button" (click)="openFeedback()" class="btn-primary btn-sm">
-        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>
-        Saisir un feedback
-      </button>
+    <div class="mt-8 flex items-center justify-between gap-4">
+      <h2 class="text-lg font-semibold text-navy-950">Comptes-rendus</h2>
+      @if (peutSaisirCompteRendu()) {
+        <button type="button" (click)="openFeedback()" class="btn-primary btn-sm">
+          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>
+          Saisir mon compte-rendu
+        </button>
+      } @else {
+        <p class="text-xs text-navy-400">{{ raisonBlocage() }}</p>
+      }
     </div>
 
     <div class="mt-3 space-y-3">
@@ -84,7 +103,7 @@
                 </span>
                 <app-status-badge [value]="f.decision" />
               </div>
-              <span class="text-xs text-navy-400">{{ directory.auteurLabel(f.auteurId) }} · {{ formatDateTime(f.dateSaisie) }}</span>
+              <span class="text-xs text-navy-400">{{ directory.employeLabel(f.auteurId) }} · {{ formatDateTime(f.dateSaisie) }}</span>
             </div>
             <p class="mt-3 text-sm text-navy-700">{{ f.commentaire }}</p>
           </div>
@@ -112,13 +131,6 @@
           <p class="field-error">Créneau requis.</p>
         }
       </div>
-      <div>
-        <label class="label">Nouvelle date et heure</label>
-        <input type="datetime-local" formControlName="nouvelleDateHeure" class="input" />
-        @if (reprogForm.controls.nouvelleDateHeure.touched && reprogForm.controls.nouvelleDateHeure.invalid) {
-          <p class="field-error">Date requise.</p>
-        }
-      </div>
       <div class="flex justify-end gap-2 pt-2">
         <button type="button" (click)="reprogOpen.set(false)" class="btn-ghost">Annuler</button>
         <button type="submit" [disabled]="busy()" class="btn-primary">{{ busy() ? 'En cours…' : 'Reprogrammer' }}</button>
@@ -129,20 +141,8 @@
 
 <!-- Modale feedback -->
 @if (feedbackOpen()) {
-  <app-modal title="Saisir un feedback" (close)="feedbackOpen.set(false)">
+  <app-modal title="Saisir mon compte-rendu" (close)="feedbackOpen.set(false)">
     <form [formGroup]="feedbackForm" (ngSubmit)="submitFeedback()" class="space-y-4">
-      <div>
-        <label class="label">Auteur (recruteur ou manager)</label>
-        <select formControlName="auteurId" class="select">
-          <option [ngValue]="null" disabled>— Sélectionner —</option>
-          @for (a of auteurs(); track a.role + a.id) {
-            <option [ngValue]="a.id">{{ a.nom }} — {{ a.role }}</option>
-          }
-        </select>
-        @if (feedbackForm.controls.auteurId.touched && feedbackForm.controls.auteurId.invalid) {
-          <p class="field-error">Auteur requis.</p>
-        }
-      </div>
       <div>
         <label class="label">Note (0 à 5)</label>
         <input type="number" min="0" max="5" formControlName="note" class="input" />

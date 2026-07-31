@@ -20,7 +20,6 @@
         <thead>
           <tr>
             <th>Poste</th>
-            <th>Type</th>
             <th>Créée le</th>
             <th>Statut</th>
             <th></th>
@@ -33,7 +32,6 @@
                 <a [routerLink]="['/demandes', d.id]" class="font-semibold text-navy-900 hover:text-accent-500">{{ d.poste }}</a>
                 <p class="text-xs text-navy-400">#{{ d.id }}</p>
               </td>
-              <td>{{ d.typeEntretien }}</td>
               <td>{{ formatDate(d.dateCreation) }}</td>
               <td><app-status-badge [value]="d.statut" /></td>
               <td class="text-right">
@@ -50,19 +48,6 @@
 @if (modalOpen()) {
   <app-modal title="Nouvelle demande" (close)="closeModal()">
     <form [formGroup]="form" (ngSubmit)="submit()" class="space-y-4">
-      <div>
-        <label class="label">Recruteur</label>
-        <select formControlName="recruteurId" class="select">
-          <option [ngValue]="null" disabled>— Sélectionner —</option>
-          @for (r of recruteurs(); track r.id) {
-            <option [ngValue]="r.id">{{ r.nom }} ({{ r.email }})</option>
-          }
-        </select>
-        @if (form.controls.recruteurId.touched && form.controls.recruteurId.invalid) {
-          <p class="field-error">Recruteur requis.</p>
-        }
-      </div>
-
       <div>
         <label class="label">Candidat</label>
         <select formControlName="candidatId" class="select">
@@ -82,15 +67,6 @@
         @if (form.controls.poste.touched && form.controls.poste.invalid) {
           <p class="field-error">Poste requis.</p>
         }
-      </div>
-
-      <div>
-        <label class="label">Type d'entretien</label>
-        <select formControlName="typeEntretien" class="select">
-          @for (t of typeValues; track t) {
-            <option [ngValue]="t">{{ t }}</option>
-          }
-        </select>
       </div>
 
       <div class="flex justify-end gap-2 pt-2">

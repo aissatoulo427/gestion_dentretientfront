@@ -1,13 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { forkJoin } from 'rxjs';
-import {
-  Candidat,
-  Demande,
-  RecruteurManager,
-  TYPE_ENTRETIEN_VALUES,
-} from '../../core/models';
+import { Candidat, Demande } from '../../core/models';
 import { NotificationService } from '../../core/notification.service';
 import { DemandeService } from '../../core/services/demande.service';
 import { PersonneService } from '../../core/services/personne.service';
@@ -29,22 +23,18 @@ export class DemandesPage {
   private readonly router = inject(Router);
   private readonly fb = inject(FormBuilder);
 
-  readonly typeValues = TYPE_ENTRETIEN_VALUES;
   readonly formatDate = formatDate;
 
   readonly loading = signal(true);
   readonly items = signal<Demande[]>([]);
-  readonly recruteurs = signal<RecruteurManager[]>([]);
   readonly candidats = signal<Candidat[]>([]);
 
   readonly modalOpen = signal(false);
   readonly saving = signal(false);
 
   readonly form = this.fb.nonNullable.group({
-    recruteurId: [null as number | null, Validators.required],
     candidatId: [null as number | null, Validators.required],
     poste: ['', Validators.required],
-    typeEntretien: ['RH' as const, Validators.required],
   });
 
   constructor() {
@@ -63,14 +53,8 @@ export class DemandesPage {
   }
 
   openModal(): void {
-    this.form.reset({ recruteurId: null, candidatId: null, poste: '', typeEntretien: 'RH' });
-    forkJoin({
-      recruteurs: this.personnes.getRecruteurs(),
-      candidats: this.personnes.getCandidats(),
-    }).subscribe(({ recruteurs, candidats }) => {
-      this.recruteurs.set(recruteurs);
-      this.candidats.set(candidats);
-    });
+    this.form.reset({ candidatId: null, poste: '' });
+    this.personnes.getCandidats().subscribe((candidats) => this.candidats.set(candidats));
     this.modalOpen.set(true);
   }
 
@@ -86,12 +70,7 @@ export class DemandesPage {
     const v = this.form.getRawValue();
     this.saving.set(true);
     this.demandes
-      .create({
-        recruteurId: v.recruteurId!,
-        candidatId: v.candidatId!,
-        poste: v.poste,
-        typeEntretien: v.typeEntretien,
-      })
+      .create({ candidatId: v.candidatId!, poste: v.poste })
       .subscribe({
         next: (demande) => {
           this.saving.set(false);

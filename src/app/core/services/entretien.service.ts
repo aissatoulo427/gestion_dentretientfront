@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { API_BASE_URL } from '../api.config';
-import { CreateEntretien, Entretien, ReprogrammerEntretien } from '../models';
+import { ApiMessage, CreateEntretien, Entretien, ReprogrammerEntretien } from '../models';
 
 @Injectable({ providedIn: 'root' })
 export class EntretienService {
@@ -21,15 +21,15 @@ export class EntretienService {
     return this.http.post<Entretien>(this.base, payload);
   }
 
-  confirmer(id: number): Observable<void> {
-    return this.http.post<void>(`${this.base}/${id}/confirmer`, {});
+  confirmer(id: number): Observable<ApiMessage> {
+    return this.http.post<ApiMessage>(`${this.base}/${id}/confirmer`, {});
   }
 
-  reprogrammer(id: number, payload: ReprogrammerEntretien): Observable<void> {
-    return this.http.post<void>(`${this.base}/${id}/reprogrammer`, payload);
+  reprogrammer(id: number, payload: ReprogrammerEntretien): Observable<ApiMessage> {
+    return this.http.post<ApiMessage>(`${this.base}/${id}/reprogrammer`, payload);
   }
 
-  rappel(id: number): Observable<void> {
-    return this.http.post<void>(`${this.base}/${id}/rappel`, {});
+  rappel(id: number): Observable<ApiMessage> {
+    return this.http.post<ApiMessage>(`${this.base}/${id}/rappel`, {});
   }
 }

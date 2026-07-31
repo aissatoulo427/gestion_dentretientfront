@@ -18,4 +18,9 @@ export type StatutEntretien =
   | 'Termine'
   | 'Annule';
 
-export type TypePersonne = 'Candidat' | 'Recruteur' | 'Manager';
+export type TypePersonne =
+  | 'Candidat'
+  | 'Admin'
+  | 'RH'
+  | 'EvaluateurTechnique'
+  | 'Manager';

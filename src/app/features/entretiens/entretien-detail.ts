@@ -1,10 +1,10 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { forkJoin } from 'rxjs';
 import {
   Creneau,
   DECISION_VALUES,
+  Demande,
   Entretien,
   Feedback,
 } from '../../core/models';
@@ -13,23 +13,12 @@ import { NotificationService } from '../../core/notification.service';
 import { DemandeService } from '../../core/services/demande.service';
 import { EntretienService } from '../../core/services/entretien.service';
 import { FeedbackService } from '../../core/services/feedback.service';
-import { PersonneService } from '../../core/services/personne.service';
-import {
-  DECISION_LABEL,
-  formatDateTime,
-  MODALITE_LABEL,
-  toApiDateTime,
-} from '../../shared/format';
+import { AuthService } from '../../core/auth/auth.service';
+import { DECISION_LABEL, formatDateTime, MODALITE_LABEL } from '../../shared/format';
 import { EmptyState } from '../../shared/ui/empty-state';
 import { Modal } from '../../shared/ui/modal';
 import { Spinner } from '../../shared/ui/spinner';
 import { StatusBadge } from '../../shared/ui/status-badge';
-
-interface Auteur {
-  id: number;
-  nom: string;
-  role: 'Recruteur' | 'Manager';
-}
 
 @Component({
   selector: 'app-entretien-detail',
@@ -41,7 +30,7 @@ export class EntretienDetail {
   private readonly entretiens = inject(EntretienService);
   private readonly feedbacks = inject(FeedbackService);
   private readonly demandes = inject(DemandeService);
-  private readonly personnes = inject(PersonneService);
+  private readonly auth = inject(AuthService);
   private readonly notify = inject(NotificationService);
   readonly directory = inject(DirectoryService);
   private readonly fb = inject(FormBuilder);
@@ -53,26 +42,56 @@ export class EntretienDetail {
 
   readonly loading = signal(true);
   readonly entretien = signal<Entretien | null>(null);
+  readonly demande = signal<Demande | null>(null);
   readonly feedbackList = signal<Feedback[]>([]);
   readonly creneauxDispo = signal<Creneau[]>([]);
-  readonly auteurs = signal<Auteur[]>([]);
 
   readonly reprogOpen = signal(false);
   readonly feedbackOpen = signal(false);
   readonly busy = signal(false);
 
-  readonly canAct = computed(() => {
+  /** Le RH qui a créé la demande est le seul à piloter ses entretiens. */
+  readonly estOrganisateur = computed(() => {
+    const d = this.demande();
+    const moi = this.auth.personneId();
+    return d !== null && moi !== null && d.rhId === moi;
+  });
+
+  readonly canAct = computed(() => this.raisonActionsIndisponibles() === null);
+
+  readonly raisonActionsIndisponibles = computed<string | null>(() => {
     const e = this.entretien();
-    return !!e && e.statut !== 'Annule' && e.statut !== 'Termine';
+    if (!e) return 'Entretien introuvable.';
+    if (e.statut === 'Annule' || e.statut === 'Termine') {
+      return 'Aucune action disponible pour ce statut.';
+    }
+    if (!this.estOrganisateur()) {
+      return "Seul le RH qui a créé la demande peut confirmer, reprogrammer ou relancer.";
+    }
+    return null;
+  });
+
+  /** Seul un évaluateur du panel, qui n'a pas encore déposé, peut saisir son compte-rendu. */
+  readonly peutSaisirCompteRendu = computed(() => this.raisonBlocage() === null);
+
+  readonly raisonBlocage = computed<string | null>(() => {
+    const e = this.entretien();
+    const moi = this.auth.personneId();
+    if (!e || moi === null) return "Votre session ne permet pas d'identifier l'auteur.";
+    if (!e.evaluateurIds.includes(moi)) {
+      return 'Vous ne faites pas partie du panel de cet entretien.';
+    }
+    if (this.feedbackList().some((f) => f.auteurId === moi)) {
+      return 'Vous avez déjà saisi votre compte-rendu pour ce tour.';
+    }
+    return null;
   });
 
   readonly reprogForm = this.fb.nonNullable.group({
     nouveauCreneauId: [null as number | null, Validators.required],
-    nouvelleDateHeure: ['', Validators.required],
   });
 
   readonly feedbackForm = this.fb.nonNullable.group({
-    auteurId: [null as number | null, Validators.required],
     note: [3, [Validators.required, Validators.min(0), Validators.max(5)]],
     decision: ['Favorable' as const, Validators.required],
     commentaire: ['', Validators.required],
@@ -83,15 +102,11 @@ export class EntretienDetail {
       const id = Number(params.get('id'));
       if (id) this.load(id);
     });
-    forkJoin({
-      recruteurs: this.personnes.getRecruteurs(),
-      managers: this.personnes.getManagers(),
-    }).subscribe(({ recruteurs, managers }) => {
-      this.auteurs.set([
-        ...recruteurs.map((r) => ({ id: r.id, nom: r.nom, role: 'Recruteur' as const })),
-        ...managers.map((m) => ({ id: m.id, nom: m.nom, role: 'Manager' as const })),
-      ]);
-    });
+  }
+
+  /** Point d'entrée de test : déclenche le chargement sans passer par le routeur. */
+  chargerPourTest(id: number): void {
+    this.load(id);
   }
 
   private load(id: number): void {
@@ -100,6 +115,10 @@ export class EntretienDetail {
       next: (e) => {
         this.entretien.set(e);
         this.loadFeedbacks(id);
+        // L'organisateur n'est plus porté par l'entretien : il se lit sur la demande.
+        this.demandes
+          .get(e.demandeEntretienId)
+          .subscribe({ next: (d) => this.demande.set(d) });
         this.demandes
           .getCreneauxDisponibles(e.demandeEntretienId)
           .subscribe({ next: (c) => this.creneauxDispo.set(c) });
@@ -120,9 +139,9 @@ export class EntretienDetail {
     if (!e) return;
     this.busy.set(true);
     this.entretiens.confirmer(e.id).subscribe({
-      next: () => {
+      next: (res) => {
         this.busy.set(false);
-        this.notify.success('Entretien confirmé.');
+        this.notify.success(res.message);
         this.load(e.id);
       },
       error: () => this.busy.set(false),
@@ -143,7 +162,7 @@ export class EntretienDetail {
   }
 
   openReprog(): void {
-    this.reprogForm.reset({ nouveauCreneauId: null, nouvelleDateHeure: '' });
+    this.reprogForm.reset({ nouveauCreneauId: null });
     this.reprogOpen.set(true);
   }
 
@@ -156,10 +175,7 @@ export class EntretienDetail {
     const v = this.reprogForm.getRawValue();
     this.busy.set(true);
     this.entretiens
-      .reprogrammer(e.id, {
-        nouveauCreneauId: v.nouveauCreneauId!,
-        nouvelleDateHeure: toApiDateTime(v.nouvelleDateHeure),
-      })
+      .reprogrammer(e.id, { nouveauCreneauId: v.nouveauCreneauId! })
       .subscribe({
         next: () => {
           this.busy.set(false);
@@ -172,7 +188,7 @@ export class EntretienDetail {
   }
 
   openFeedback(): void {
-    this.feedbackForm.reset({ auteurId: null, note: 3, decision: 'Favorable', commentaire: '' });
+    this.feedbackForm.reset({ note: 3, decision: 'Favorable', commentaire: '' });
     this.feedbackOpen.set(true);
   }
 
@@ -187,7 +203,6 @@ export class EntretienDetail {
     this.feedbacks
       .create({
         entretienId: e.id,
-        auteurId: v.auteurId!,
         note: v.note,
         commentaire: v.commentaire,
         decision: v.decision,

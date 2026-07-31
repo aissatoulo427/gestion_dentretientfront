@@ -2,7 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { API_BASE_URL } from '../api.config';
-import { CreateCreneau, Creneau } from '../models';
+import { ApiMessage, CreateCreneau, Creneau } from '../models';
 
 @Injectable({ providedIn: 'root' })
 export class CreneauService {
@@ -17,9 +17,9 @@ export class CreneauService {
     return this.http.post<Creneau>(this.base, payload);
   }
 
-  /** Rattache le créneau à une demande. POST /creneaux/{id}/proposer?demandeId={demandeId} -> 204 */
-  proposer(id: number, demandeId: number): Observable<void> {
+  /** Rattache le créneau à une demande. POST /creneaux/{id}/proposer?demandeId={demandeId} */
+  proposer(id: number, demandeId: number): Observable<ApiMessage> {
     const params = new HttpParams().set('demandeId', demandeId);
-    return this.http.post<void>(`${this.base}/${id}/proposer`, {}, { params });
+    return this.http.post<ApiMessage>(`${this.base}/${id}/proposer`, {}, { params });
   }
 }

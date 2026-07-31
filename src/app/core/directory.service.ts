@@ -1,11 +1,11 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { forkJoin } from 'rxjs';
-import { Candidat, Demande, RecruteurManager } from './models';
+import { Candidat, Demande, Employe, Role, ROLE_LABEL } from './models';
 import { DemandeService } from './services/demande.service';
 import { PersonneService } from './services/personne.service';
 
 /**
- * Annuaire en cache : résout les identifiants (candidatId, recruteurId…) en libellés
+ * Annuaire en cache : résout les identifiants (candidatId, rhId…) en libellés
  * lisibles (noms) pour éviter d'afficher des « #3 » bruts dans l'interface.
  * Les données sont chargées une fois et mises à jour à la demande.
  */
@@ -15,8 +15,9 @@ export class DirectoryService {
   private readonly demandes = inject(DemandeService);
 
   private readonly candidatsMap = signal<Map<number, Candidat>>(new Map());
-  private readonly recruteursMap = signal<Map<number, RecruteurManager>>(new Map());
-  private readonly managersMap = signal<Map<number, RecruteurManager>>(new Map());
+  private readonly rhMap = signal<Map<number, Employe>>(new Map());
+  private readonly evaluateursTechniquesMap = signal<Map<number, Employe>>(new Map());
+  private readonly managersMap = signal<Map<number, Employe>>(new Map());
   private readonly demandesMap = signal<Map<number, Demande>>(new Map());
   private loaded = false;
 
@@ -28,11 +29,15 @@ export class DirectoryService {
   load(): void {
     forkJoin({
       candidats: this.personnes.getCandidats(),
-      recruteurs: this.personnes.getRecruteurs(),
+      rh: this.personnes.getRh(),
+      evaluateursTechniques: this.personnes.getEvaluateursTechniques(),
       managers: this.personnes.getManagers(),
-    }).subscribe(({ candidats, recruteurs, managers }) => {
+    }).subscribe(({ candidats, rh, evaluateursTechniques, managers }) => {
       this.candidatsMap.set(new Map(candidats.map((c) => [c.id, c])));
-      this.recruteursMap.set(new Map(recruteurs.map((r) => [r.id, r])));
+      this.rhMap.set(new Map(rh.map((r) => [r.id, r])));
+      this.evaluateursTechniquesMap.set(
+        new Map(evaluateursTechniques.map((e) => [e.id, e])),
+      );
       this.managersMap.set(new Map(managers.map((m) => [m.id, m])));
       this.loaded = true;
     });
@@ -56,13 +61,27 @@ export class DirectoryService {
     return c ? `${c.prenom} ${c.nom}`.trim() : `Candidat #${id}`;
   }
 
-  recruteur(id: number): RecruteurManager | undefined {
-    return this.recruteursMap().get(id);
+  rh(id: number): Employe | undefined {
+    return this.rhMap().get(id);
   }
 
-  recruteurLabel(id: number): string {
-    const r = this.recruteursMap().get(id);
-    return r ? r.nom : `Recruteur #${id}`;
+  rhLabel(id: number): string {
+    const r = this.rhMap().get(id);
+    return r ? r.nom : `RH #${id}`;
+  }
+
+  /** Retrouve un employé quel que soit son rôle, et dit lequel. */
+  employe(id: number): { employe: Employe; role: Role } | undefined {
+    const rh = this.rhMap().get(id);
+    if (rh) return { employe: rh, role: 'RH' };
+
+    const technique = this.evaluateursTechniquesMap().get(id);
+    if (technique) return { employe: technique, role: 'EvaluateurTechnique' };
+
+    const manager = this.managersMap().get(id);
+    if (manager) return { employe: manager, role: 'Manager' };
+
+    return undefined;
   }
 
   demandeLabel(id: number): string {
@@ -70,12 +89,12 @@ export class DirectoryService {
     return d ? d.poste : `Demande #${id}`;
   }
 
-  /** Un auteur de feedback est un recruteur OU un manager. */
-  auteurLabel(id: number): string {
-    const r = this.recruteursMap().get(id);
-    if (r) return `${r.nom} · Recruteur`;
-    const m = this.managersMap().get(id);
-    if (m) return `${m.nom} · Manager`;
-    return `Auteur #${id}`;
+  /**
+   * « Nom · Rôle » — pour les panels d'évaluateurs et les auteurs de comptes-rendus.
+   * Le rôle est indispensable : sans lui, impossible de composer un panel valide.
+   */
+  employeLabel(id: number): string {
+    const trouve = this.employe(id);
+    return trouve ? `${trouve.employe.nom} · ${ROLE_LABEL[trouve.role]}` : `Employé #${id}`;
   }
 }
