@@ -2,7 +2,7 @@ import { Decision, Modalite, StatutDemande, StatutEntretien } from '../core/mode
 
 /** Formate une date ISO en JJ/MM/AAAA HH:mm (locale fr). */
 export function formatDateTime(iso: string | null | undefined): string {
-  if (!iso) return '—';
+  if (!iso) return '-';
   const d = new Date(iso);
   if (isNaN(d.getTime())) return iso;
   return d.toLocaleString('fr-FR', {
@@ -15,7 +15,7 @@ export function formatDateTime(iso: string | null | undefined): string {
 }
 
 export function formatDate(iso: string | null | undefined): string {
-  if (!iso) return '—';
+  if (!iso) return '-';
   const d = new Date(iso);
   if (isNaN(d.getTime())) return iso;
   return d.toLocaleDateString('fr-FR', {

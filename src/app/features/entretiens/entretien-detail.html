@@ -44,7 +44,7 @@
             @if (demande(); as dem) {
               <dd class="mt-1 text-sm font-medium text-navy-900">{{ directory.rhLabel(dem.rhId) }}</dd>
             } @else {
-              <dd class="mt-1 text-sm text-navy-300">—</dd>
+              <dd class="mt-1 text-sm text-navy-300">-</dd>
             }
           </div>
           <div class="col-span-2">
@@ -122,7 +122,7 @@
       <div>
         <label class="label">Nouveau créneau</label>
         <select formControlName="nouveauCreneauId" class="select">
-          <option [ngValue]="null" disabled>— Sélectionner —</option>
+          <option [ngValue]="null" disabled>- Sélectionner -</option>
           @for (c of creneauxDispo(); track c.id) {
             <option [ngValue]="c.id">#{{ c.id }} · {{ formatDateTime(c.dateDebut) }}</option>
           }

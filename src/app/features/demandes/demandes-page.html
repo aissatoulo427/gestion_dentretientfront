@@ -51,7 +51,7 @@
       <div>
         <label class="label">Candidat</label>
         <select formControlName="candidatId" class="select">
-          <option [ngValue]="null" disabled>— Sélectionner —</option>
+          <option [ngValue]="null" disabled>- Sélectionner -</option>
           @for (c of candidats(); track c.id) {
             <option [ngValue]="c.id">{{ c.prenom }} {{ c.nom }}</option>
           }

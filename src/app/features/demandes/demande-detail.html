@@ -95,7 +95,7 @@
                   <p class="truncate text-xs text-navy-400">{{ c.email }}</p>
                 </div>
               </div>
-              <p class="mt-2 text-xs text-navy-500">☎ {{ c.telephone || '—' }}</p>
+              <p class="mt-2 text-xs text-navy-500">☎ {{ c.telephone || '-' }}</p>
             } @else {
               <p class="mt-2 text-sm font-medium text-navy-900">{{ directory.candidatLabel(d.candidatId) }}</p>
             }
@@ -234,7 +234,7 @@
       <div>
         <label class="label">Créneau</label>
         <select formControlName="creneauId" class="select">
-          <option [ngValue]="null" disabled>— Sélectionner un créneau proposé —</option>
+          <option [ngValue]="null" disabled>- Sélectionner un créneau proposé -</option>
           @for (c of creneauxDispo(); track c.id) {
             <option [ngValue]="c.id">#{{ c.id }} · {{ formatDateTime(c.dateDebut) }}</option>
           }
